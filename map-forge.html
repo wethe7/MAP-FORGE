@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map Forge — генератор map-арта для Minecraft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#12100c; --stage:#17140f; --panel:#1d1a14; --panel2:#252117;
+  --ink:#ece5d2; --muted:#a1977f; --line:#000;
+  --green:#57a63e; --green-hi:#79c95a; --green-ink:#0c2605;
+  --gold:#f0b429; --red:#e0563f;
+  --bev-l:rgba(255,255,255,.07); --bev-d:rgba(0,0,0,.42);
+  --hard:4px 4px 0 rgba(0,0,0,.5);
+  --font-pix:"Pixelify Sans","JetBrains Mono",monospace;
+  --font-mono:"JetBrains Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  background-image:conic-gradient(rgba(255,255,255,.014) 25%,transparent 0 50%,rgba(255,255,255,.014) 0 75%,transparent 0);
+  background-size:6px 6px;
+  color:var(--ink); font:14px/1.5 var(--font-mono);
+}
+::selection{background:var(--green);color:var(--green-ink)}
+h1,h2,h3{margin:0}
+button{font-family:var(--font-pix)}
+
+/* ---------- top bar ---------- */
+.topbar{
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+  padding:14px 22px;background:var(--panel);
+  border-bottom:2px solid var(--line);
+  box-shadow:0 3px 0 rgba(0,0,0,.35);
+}
+.brand{display:flex;align-items:center;gap:14px}
+.brand svg{display:block;image-rendering:pixelated}
+.brand h1{
+  font:700 22px/1 var(--font-pix);letter-spacing:.06em;color:#fff;
+  text-shadow:2px 2px 0 #000, 4px 4px 0 rgba(87,166,62,.35);
+}
+.brand p{margin:3px 0 0;font-size:11px;color:var(--muted);letter-spacing:.04em}
+.lang-toggle{display:flex;margin-left:auto}
+.lang-btn{
+  font:600 12px/1 var(--font-pix);letter-spacing:.08em;padding:7px 11px;
+  background:#14110c;color:var(--muted);border:2px solid #000;cursor:pointer;
+}
+.lang-btn+.lang-btn{border-left:none}
+.lang-btn.on{background:var(--green);color:var(--green-ink)}
+.lang-btn:hover:not(.on){filter:brightness(1.35);color:var(--ink)}
+.palette-strip{display:flex;flex-wrap:wrap;gap:2px;max-width:420px;margin-left:4px}
+.palette-strip i{width:10px;height:10px;border:1px solid #000;display:block}
+
+/* ---------- layout ---------- */
+main{display:grid;grid-template-columns:312px minmax(0,1fr) 312px;gap:16px;padding:16px 22px;align-items:start}
+.panel{background:var(--panel);border:2px solid var(--line);box-shadow:var(--hard)}
+.panel .sec{border-bottom:2px solid var(--line)}
+.panel .sec:last-child{border-bottom:none}
+.sec>h2{
+  display:flex;align-items:center;gap:8px;
+  font:600 13px/1 var(--font-pix);letter-spacing:.14em;text-transform:uppercase;color:var(--gold);
+  padding:10px 14px;background:var(--panel2);border-bottom:2px solid var(--line);
+  box-shadow:inset 0 2px 0 var(--bev-l);
+}
+.sec>h2 .sq{width:8px;height:8px;background:var(--green);display:inline-block;border:1px solid #000}
+.sec .body{padding:14px}
+
+/* ---------- controls ---------- */
+.lbl{display:block;font-size:11px;color:var(--muted);letter-spacing:.06em;margin:0 0 6px}
+.lbl b{color:var(--ink);font-weight:500}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row+.row{margin-top:10px}
+select,input[type=number],input[type=text]{
+  background:#14110c;color:var(--ink);border:2px solid #000;
+  box-shadow:inset 2px 2px 0 rgba(0,0,0,.5);padding:6px 8px;
+  font:13px var(--font-mono);width:100%;
+}
+select:focus,input:focus{outline:2px solid var(--green);outline-offset:-1px}
+input[type=color]{width:34px;height:30px;padding:2px;border:2px solid #000;background:#14110c;cursor:pointer}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:20px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:8px;background:#14110c;border:2px solid #000;box-shadow:inset 2px 2px 0 rgba(0,0,0,.6)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;background:var(--green);border:2px solid #000;box-shadow:inset 0 2px 0 rgba(255,255,255,.3)}
+input[type=range]::-moz-range-track{height:8px;background:#14110c;border:2px solid #000}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;background:var(--green);border:2px solid #000;border-radius:0}
+.check{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;user-select:none}
+.check input{appearance:none;-webkit-appearance:none;width:16px;height:16px;margin:0;border:2px solid #000;background:#14110c;box-shadow:inset 2px 2px 0 rgba(0,0,0,.5);cursor:pointer;flex:none}
+.check input:checked{background:var(--green);box-shadow:inset 0 0 0 2px #14110c}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font:600 14px/1 var(--font-pix);letter-spacing:.04em;color:var(--ink);
+  background:#3a342a;border:2px solid #000;padding:9px 14px;cursor:pointer;
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.14),inset 0 -4px 0 rgba(0,0,0,.32),3px 3px 0 rgba(0,0,0,.5);
+  text-shadow:1px 1px 0 rgba(0,0,0,.6);
+}
+.btn:hover{filter:brightness(1.13)}
+.btn:active{transform:translate(2px,2px);box-shadow:inset 0 2px 0 rgba(0,0,0,.3),1px 1px 0 rgba(0,0,0,.5)}
+.btn.primary{background:var(--green);color:var(--green-ink);text-shadow:1px 1px 0 rgba(255,255,255,.25)}
+.btn.wide{width:100%}
+.btn+.btn{margin-top:8px}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.hint{font-size:11px;color:var(--muted);margin:8px 0 0}
+.hint code{color:var(--gold);font-size:11px}
+
+/* ---------- stage ---------- */
+.stage{background:var(--stage);border:2px solid var(--line);box-shadow:var(--hard);min-height:420px;padding:16px}
+.dropzone{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  min-height:400px;border:3px dashed #3d372b;text-align:center;padding:30px;cursor:pointer;
+}
+.dropzone:hover,.dropzone.over{border-color:var(--green);background:rgba(87,166,62,.06)}
+.dropzone .bigtitle{font:700 20px var(--font-pix);color:var(--ink)}
+.dropzone .sub{font-size:12px;color:var(--muted)}
+.dropzone kbd{background:#14110c;border:1px solid #000;padding:1px 5px;font-size:11px;color:var(--gold)}
+.canvases{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.canvases figure{margin:0}
+.canvases figcaption{font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:.06em}
+.canvases figcaption b{color:var(--ink);font-weight:500}
+.cwrap{overflow:auto;max-width:100%;border:2px solid #000;box-shadow:var(--hard);background:#0d0b08}
+canvas{display:block;image-rendering:pixelated}
+.viewbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px;padding:10px 12px;background:var(--panel);border:2px solid #000}
+.viewbar .lbl{margin:0}
+.viewbar .zoombox{display:flex;align-items:center;gap:8px;min-width:200px}
+.stats{margin-left:auto;font-size:12px;color:var(--muted)}
+.stats b{color:var(--ink);font-weight:500}
+
+/* ---------- materials ---------- */
+.matlist{max-height:380px;overflow:auto}
+.mrow{position:relative;display:flex;align-items:center;gap:9px;padding:5px 14px;font-size:12px;overflow:hidden}
+.mrow .fillbar{position:absolute;inset:0;opacity:.13;background:var(--green)}
+.mrow .sw{width:14px;height:14px;border:1px solid #000;flex:none;position:relative}
+.mrow .nm{flex:1;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrow .ct{position:relative;font-variant-numeric:tabular-nums;color:var(--muted)}
+.mtotal{padding:10px 14px;font-size:12px;color:var(--muted);border-top:2px solid #000;background:var(--panel2)}
+.mtotal b{color:var(--ink)}
+.warn{color:var(--gold)}
+
+/* ---------- export ---------- */
+.coords{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+details.help{border-top:2px solid #000}
+details.help summary{cursor:pointer;padding:10px 14px;font:600 13px var(--font-pix);letter-spacing:.1em;color:var(--gold);text-transform:uppercase;background:var(--panel2);list-style:none}
+details.help summary::before{content:"▸ ";color:var(--ink)}
+details.help[open] summary::before{content:"▾ "}
+details.help .body{font-size:12px;color:var(--muted)}
+details.help .body ol{margin:0;padding-left:18px}
+details.help .body li{margin-bottom:7px}
+details.help .body code{color:var(--gold);font-size:11px;word-break:break-all}
+
+/* ---------- statusbar / misc ---------- */
+.statusbar{
+  display:flex;gap:18px;flex-wrap:wrap;justify-content:space-between;
+  padding:9px 22px;border-top:2px solid var(--line);background:var(--panel);
+  font-size:11px;color:var(--muted);letter-spacing:.04em;
+}
+#tooltip{
+  position:fixed;z-index:50;pointer-events:none;display:none;
+  background:#0d0b08;border:2px solid var(--green);padding:7px 10px;
+  font-size:11px;line-height:1.6;box-shadow:var(--hard);max-width:240px;
+}
+#tooltip .tt-name{color:var(--ink);font-weight:700}
+#toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+  background:var(--green);color:var(--green-ink);border:2px solid #000;
+  box-shadow:var(--hard);padding:10px 18px;font:600 14px var(--font-pix);
+  opacity:0;transition:.25s;z-index:60;pointer-events:none;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (max-width:1180px){main{grid-template-columns:1fr 1fr}.stage{order:-1;grid-column:1/-1}}
+@media (max-width:760px){main{grid-template-columns:1fr}.palette-strip{display:none}.brand h1{font-size:18px}}
+::-webkit-scrollbar{width:12px;height:12px}
+::-webkit-scrollbar-track{background:#0d0b08}
+::-webkit-scrollbar-thumb{background:#3a342a;border:2px solid #000}
+::-webkit-scrollbar-thumb:hover{background:var(--green)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg width="40" height="40" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+      <rect width="8" height="8" fill="#57a63e"/>
+      <rect x="1" y="1" width="2" height="2" fill="#0d2a06"/>
+      <rect x="5" y="1" width="2" height="2" fill="#0d2a06"/>
+      <rect x="3" y="3" width="2" height="2" fill="#0d2a06"/>
+      <rect x="2" y="4" width="4" height="2" fill="#0d2a06"/>
+      <rect x="2" y="6" width="1" height="2" fill="#0d2a06"/>
+      <rect x="5" y="6" width="1" height="2" fill="#0d2a06"/>
+    </svg>
+    <div>
+      <h1>MAP FORGE</h1>
+      <p data-i18n="subtitle">генератор map-арта · Minecraft Java 1.20+</p>
+    </div>
+  </div>
+  <div class="lang-toggle" role="group" aria-label="Язык / Language">
+    <button class="lang-btn" data-lang="ru" type="button">RU</button>
+    <button class="lang-btn" data-lang="en" type="button">EN</button>
+  </div>
+  <div class="palette-strip" id="paletteStrip"></div>
+</header>
+
+<main>
+  <!-- ================= ЛЕВАЯ ПАНЕЛЬ ================= -->
+  <aside class="panel">
+    <section class="sec">
+      <h2><i class="sq"></i><span data-i18n="secSource">Источник</span></h2>
+      <div class="body">
+        <div class="row">
+          <button class="btn wide" id="btnOpen" type="button" data-i18n="btnOpen">Открыть файл…</button>
+        </div>
+        <div class="row">
+          <button class="btn wide" id="btnDemo" type="button" data-i18n="btnDemo">Пример: крипер</button>
+        </div>
+        <p class="hint"><span data-i18n="srcHint1">Или перетащи картинку в любое место окна / вставь из буфера (</span><kbd>Ctrl</kbd>+<kbd>V</kbd><span data-i18n="srcHint2">).</span></p>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2><i class="sq"></i><span data-i18n="secSize">Размер арта</span></h2>
+      <div class="body">
+        <div class="row">
+          <div style="flex:1">
+            <label class="lbl" for="maps" data-i18n="mapsLabel">Карт (N×N), 128 блоков каждая</label>
+            <select id="maps">
+              <option value="1" selected>1×1 — 128×128</option>
+              <option value="2">2×2 — 256×256</option>
+              <option value="3">3×3 — 384×384</option>
+              <option value="4">4×4 — 512×512</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div style="flex:1">
+            <label class="lbl" for="fit" data-i18n="fitLabel">Вписать в холст</label>
+            <select id="fit">
+              <option value="cover" selected data-i18n="fitCover">обрезать края (cover)</option>
+              <option value="contain" data-i18n="fitContain">вписать целиком (contain)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" id="bgRow">
+          <label class="lbl" style="margin:0" for="bg" data-i18n="bgLabel">Фон для полей</label>
+          <input type="color" id="bg" value="#000000">
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2><i class="sq"></i><span data-i18n="secTune">Коррекция</span></h2>
+      <div class="body">
+        <label class="lbl"><span data-i18n="bright">Яркость</span> <output id="oBright">100</output>%</label>
+        <input type="range" id="bright" min="40" max="180" value="100">
+        <label class="lbl"><span data-i18n="contrast">Контраст</span> <output id="oContrast">100</output>%</label>
+        <input type="range" id="contrast" min="40" max="180" value="100">
+        <label class="lbl"><span data-i18n="sat">Насыщенность</span> <output id="oSat">100</output>%</label>
+        <input type="range" id="sat" min="0" max="220" value="100">
+        <div class="row" style="margin-top:12px">
+          <label class="check"><input type="checkbox" id="dither"> <span data-i18n="dither">Дизеринг (Флойд–Стайнберг)</span></label>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2><i class="sq"></i><span data-i18n="secMode">Режим постройки</span></h2>
+      <div class="body">
+        <label class="check"><input type="radio" name="mode" value="flat" checked> <span data-i18n="modeFlat">Плоский — все блоки в один уровень</span></label>
+        <p class="hint" data-i18n="modeFlatHint">Ровный пол, минимум блоков. Цвета — только базовые тона.</p>
+        <label class="check" style="margin-top:10px"><input type="radio" name="mode" value="stairs"> <span data-i18n="modeStairs">Ступенчатый — +1 блок выше/ниже</span></label>
+        <p class="hint" data-i18n="modeStairsHint">Рельеф «лесенкой» на север–юг даёт 3 тона каждого цвета: картинка точнее, блоков больше.</p>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ================= ЦЕНТР ================= -->
+  <section class="stage" id="stage">
+    <div class="dropzone" id="dropzone">
+      <svg width="72" height="72" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+        <rect width="8" height="8" fill="#2c2f22"/>
+        <rect x="1" y="1" width="2" height="2" fill="#0d2a06"/>
+        <rect x="5" y="1" width="2" height="2" fill="#0d2a06"/>
+        <rect x="3" y="3" width="2" height="2" fill="#0d2a06"/>
+        <rect x="2" y="4" width="4" height="2" fill="#0d2a06"/>
+        <rect x="2" y="6" width="1" height="2" fill="#0d2a06"/>
+        <rect x="5" y="6" width="1" height="2" fill="#0d2a06"/>
+      </svg>
+      <div class="bigtitle" data-i18n="dzTitle">Перетащи картинку сюда</div>
+      <div class="sub"><span data-i18n="dzSub1">или нажми, чтобы выбрать файл · </span><kbd>Ctrl</kbd>+<kbd>V</kbd><span data-i18n="dzSub2"> вставит из буфера</span></div>
+      <button class="btn primary" id="btnDemo2" type="button" data-i18n="btnDemo">Пример: крипер</button>
+    </div>
+    <div id="work" hidden>
+      <div class="canvases">
+        <figure>
+          <figcaption data-i18n="figOrig">Оригинал · после коррекции</figcaption>
+          <div class="cwrap"><canvas id="cvOrig"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption><span data-i18n="figResult">Результат · </span><b id="resLabel">128×128</b><span data-i18n="figResUnit"> блоков</span></figcaption>
+          <div class="cwrap"><canvas id="cvRes"></canvas></div>
+        </figure>
+      </div>
+      <div class="viewbar">
+        <div class="zoombox">
+          <span class="lbl" data-i18n="zoomLbl">Зум</span>
+          <input type="range" id="zoom" min="1" max="6" step="0.5" value="3">
+        </div>
+        <label class="check"><input type="checkbox" id="grid"> <span data-i18n="grid">Сетка карт</span></label>
+        <span class="stats" id="stats"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ПРАВАЯ ПАНЕЛЬ ================= -->
+  <aside class="panel">
+    <section class="sec">
+      <h2><i class="sq"></i><span data-i18n="matTitle">Материалы</span></h2>
+      <div class="matlist" id="matlist">
+        <div class="mrow"><span class="nm" style="color:var(--muted)" data-i18n="matEmpty">Пока пусто — загрузи картинку</span></div>
+      </div>
+      <div class="mtotal" id="mtotal">—</div>
+    </section>
+
+    <section class="sec">
+      <h2><i class="sq"></i><span data-i18n="expTitle">Экспорт</span></h2>
+      <div class="body">
+        <label class="lbl" for="cx" data-i18n="coordsLabel">Северо-западный угол (верх картинки смотрит на север)</label>
+        <div class="coords">
+          <input type="number" id="cx" value="0" aria-label="X">
+          <input type="number" id="cy" value="-60" aria-label="Y — уровень пола">
+          <input type="number" id="cz" value="0" aria-label="Z">
+        </div>
+        <p class="hint" style="margin:6px 0 12px"><span data-i18n="coordsHint">Y — уровень пола. В суперплоском мире пол на </span><code>Y=-60</code><span>.</span></p>
+        <button class="btn primary wide" id="btnZip" type="button" data-i18n="btnZip">Скачать датапак (.zip)</button>
+        <button class="btn wide" id="btnFn" type="button" data-i18n="btnFn">Скачать .mcfunction</button>
+        <button class="btn wide" id="btnCopy" type="button" data-i18n="btnCopy">Копировать команды</button>
+        <button class="btn wide" id="btnPng" type="button" data-i18n="btnPng">Скачать PNG превью</button>
+      </div>
+    </section>
+
+    <section class="sec">
+      <details class="help">
+        <summary data-i18n="helpSummary">Как построить в игре</summary>
+        <div class="body">
+          <ol>
+            <li data-i18n="help1">1. Скачай датапак и положи zip в saves/ТвойМир/datapacks/.</li>
+            <li data-i18n="help2">2. В игре: /reload, затем /function mapart:art. Арт построится от указанного угла, ряды идут на юг.</li>
+            <li data-i18n="help3">3. Возьми пустую карту и активируй её, стоя в области арта — карта привязывается к сетке 128×128. Для арта N×N нужно N карт и столько же рамок на стене.</li>
+            <li data-i18n="help4">4. В ступенчатом режиме не ломай служебный ряд блоков севернее арта («нублайн»), пока не снял карту — он задаёт тон верхнего ряда.</li>
+            <li data-i18n="help5">5. Датапак собран для 1.21+. Для 1.20.x в pack.mcmeta поставь "pack_format": 15 (обе папки function/functions уже внутри, так что работает и там и там).</li>
+          </ol>
+        </div>
+      </details>
+    </section>
+  </aside>
+</main>
+
+<footer class="statusbar">
+  <span id="statusLeft"></span>
+  <span data-i18n="statusRight">пол + карта в рамке · нублайн включён</span>
+</footer>
+
+<div id="tooltip" role="tooltip"></div>
+<div id="toast"></div>
+<input type="file" id="fileInput" accept="image/*" hidden>
+
+<script>
+"use strict";
+/* ================= данные ================= */
+const PALETTE = [{"id":0,"block":"minecraft:grass_block","display":"Grass Block","tones":{"dark":[89,125,39],"normal":[109,153,48],"light":[127,178,56],"unobtainable":[67,94,29]}},{"id":1,"block":"minecraft:bone_block","display":"Bone Block","tones":{"dark":[174,164,115],"normal":[213,201,140],"light":[247,233,163],"unobtainable":[130,123,86]}},{"id":3,"block":"minecraft:redstone_block","display":"Block of Redstone","tones":{"dark":[180,0,0],"normal":[220,0,0],"light":[255,0,0],"unobtainable":[135,0,0]}},{"id":5,"block":"minecraft:iron_block","display":"Block of Iron","tones":{"dark":[117,117,117],"normal":[144,144,144],"light":[167,167,167],"unobtainable":[88,88,88]}},{"id":6,"block":"minecraft:bamboo_block","display":"Block of Bamboo (horizontal)","tones":{"dark":[0,87,0],"normal":[0,106,0],"light":[0,124,0],"unobtainable":[0,65,0]}},{"id":7,"block":"minecraft:clay","display":"Clay","tones":{"dark":[115,118,129],"normal":[141,144,158],"light":[164,168,184],"unobtainable":[86,88,97]}},{"id":8,"block":"minecraft:jungle_planks","display":"Jungle Planks","tones":{"dark":[106,76,54],"normal":[130,94,66],"light":[151,109,77],"unobtainable":[79,57,40]}},{"id":9,"block":"minecraft:cobblestone","display":"Cobblestone","tones":{"dark":[79,79,79],"normal":[96,96,96],"light":[112,112,112],"unobtainable":[59,59,59]}},{"id":11,"block":"minecraft:oak_planks","display":"Oak Planks","tones":{"dark":[100,84,50],"normal":[123,102,62],"light":[143,119,72],"unobtainable":[75,63,38]}},{"id":12,"block":"minecraft:quartz_block","display":"Quartz Block","tones":{"dark":[180,177,172],"normal":[220,217,211],"light":[255,252,245],"unobtainable":[135,133,129]}},{"id":13,"block":"minecraft:white_concrete","display":"White Concrete","tones":{"dark":[180,180,180],"normal":[220,220,220],"light":[255,255,255],"unobtainable":[135,135,135]}},{"id":14,"block":"minecraft:orange_concrete","display":"Orange Concrete","tones":{"dark":[152,89,36],"normal":[186,109,44],"light":[216,127,51],"unobtainable":[114,67,27]}},{"id":15,"block":"minecraft:magenta_concrete","display":"Magenta Concrete","tones":{"dark":[125,53,152],"normal":[153,65,186],"light":[178,76,216],"unobtainable":[94,40,114]}},{"id":16,"block":"minecraft:light_blue_concrete","display":"Light Blue Concrete","tones":{"dark":[72,108,152],"normal":[88,132,186],"light":[102,153,216],"unobtainable":[54,81,114]}},{"id":17,"block":"minecraft:yellow_concrete","display":"Yellow Concrete","tones":{"dark":[161,161,36],"normal":[197,197,44],"light":[229,229,51],"unobtainable":[121,121,27]}},{"id":18,"block":"minecraft:lime_concrete","display":"Lime Concrete","tones":{"dark":[89,144,17],"normal":[109,176,21],"light":[127,204,25],"unobtainable":[67,108,13]}},{"id":19,"block":"minecraft:pink_concrete","display":"Pink Concrete","tones":{"dark":[170,89,116],"normal":[208,109,142],"light":[242,127,165],"unobtainable":[128,67,87]}},{"id":20,"block":"minecraft:gray_concrete","display":"Gray Concrete","tones":{"dark":[53,53,53],"normal":[65,65,65],"light":[76,76,76],"unobtainable":[40,40,40]}},{"id":21,"block":"minecraft:light_gray_concrete","display":"Light Gray Concrete","tones":{"dark":[108,108,108],"normal":[132,132,132],"light":[153,153,153],"unobtainable":[81,81,81]}},{"id":22,"block":"minecraft:cyan_concrete","display":"Cyan Concrete","tones":{"dark":[53,89,108],"normal":[65,109,132],"light":[76,127,153],"unobtainable":[40,67,81]}},{"id":23,"block":"minecraft:purple_concrete","display":"Purple Concrete","tones":{"dark":[89,44,125],"normal":[109,54,153],"light":[127,63,178],"unobtainable":[67,33,94]}},{"id":24,"block":"minecraft:blue_concrete","display":"Blue Concrete","tones":{"dark":[36,53,125],"normal":[44,65,153],"light":[51,76,178],"unobtainable":[27,40,94]}},{"id":25,"block":"minecraft:brown_concrete","display":"Brown Concrete","tones":{"dark":[72,53,36],"normal":[88,65,44],"light":[102,76,51],"unobtainable":[54,40,27]}},{"id":26,"block":"minecraft:green_concrete","display":"Green Concrete","tones":{"dark":[72,89,36],"normal":[88,109,44],"light":[102,127,51],"unobtainable":[54,67,27]}},{"id":27,"block":"minecraft:red_concrete","display":"Red Concrete","tones":{"dark":[108,36,36],"normal":[132,44,44],"light":[153,51,51],"unobtainable":[81,27,27]}},{"id":28,"block":"minecraft:black_concrete","display":"Black Concrete","tones":{"dark":[17,17,17],"normal":[21,21,21],"light":[25,25,25],"unobtainable":[13,13,13]}},{"id":29,"block":"minecraft:gold_block","display":"Block of Gold","tones":{"dark":[176,168,54],"normal":[215,205,66],"light":[250,238,77],"unobtainable":[132,126,40]}},{"id":30,"block":"minecraft:diamond_block","display":"Block of Diamond","tones":{"dark":[64,154,150],"normal":[79,188,183],"light":[92,219,213],"unobtainable":[48,115,112]}},{"id":31,"block":"minecraft:lapis_block","display":"Lapis Lazuli Block","tones":{"dark":[52,90,180],"normal":[63,110,220],"light":[74,128,255],"unobtainable":[39,67,135]}},{"id":32,"block":"minecraft:emerald_block","display":"Block of Emerald","tones":{"dark":[0,153,40],"normal":[0,187,50],"light":[0,217,58],"unobtainable":[0,114,30]}},{"id":33,"block":"minecraft:spruce_planks","display":"Spruce Planks","tones":{"dark":[91,60,34],"normal":[111,74,42],"light":[129,86,49],"unobtainable":[68,45,25]}},{"id":34,"block":"minecraft:magma_block","display":"Magma Block","tones":{"dark":[79,1,0],"normal":[96,1,0],"light":[112,2,0],"unobtainable":[59,1,0]}},{"id":35,"block":"minecraft:white_terracotta","display":"White Terracotta","tones":{"dark":[147,124,113],"normal":[180,152,138],"light":[209,177,161],"unobtainable":[110,93,85]}},{"id":36,"block":"minecraft:orange_terracotta","display":"Orange Terracotta","tones":{"dark":[112,57,25],"normal":[137,70,31],"light":[159,82,36],"unobtainable":[84,43,19]}},{"id":37,"block":"minecraft:magenta_terracotta","display":"Magenta Terracotta","tones":{"dark":[105,61,76],"normal":[128,75,93],"light":[149,87,108],"unobtainable":[78,46,57]}},{"id":38,"block":"minecraft:light_blue_terracotta","display":"Light Blue Terracotta","tones":{"dark":[79,76,97],"normal":[96,93,119],"light":[112,108,138],"unobtainable":[59,57,73]}},{"id":39,"block":"minecraft:yellow_terracotta","display":"Yellow Terracotta","tones":{"dark":[131,93,25],"normal":[160,114,31],"light":[186,133,36],"unobtainable":[98,70,19]}},{"id":40,"block":"minecraft:lime_terracotta","display":"Lime Terracotta","tones":{"dark":[72,82,37],"normal":[88,100,45],"light":[103,117,53],"unobtainable":[54,61,28]}},{"id":41,"block":"minecraft:pink_terracotta","display":"Pink Terracotta","tones":{"dark":[112,54,55],"normal":[138,66,67],"light":[160,77,78],"unobtainable":[84,40,41]}},{"id":42,"block":"minecraft:gray_terracotta","display":"Gray Terracotta","tones":{"dark":[40,28,24],"normal":[49,35,30],"light":[57,41,35],"unobtainable":[30,21,18]}},{"id":43,"block":"minecraft:light_gray_terracotta","display":"Light Gray Terracotta","tones":{"dark":[95,75,69],"normal":[116,92,84],"light":[135,107,98],"unobtainable":[71,56,51]}},{"id":44,"block":"minecraft:cyan_terracotta","display":"Cyan Terracotta","tones":{"dark":[61,64,64],"normal":[75,79,79],"light":[87,92,92],"unobtainable":[46,48,48]}},{"id":45,"block":"minecraft:purple_terracotta","display":"Purple Terracotta","tones":{"dark":[86,51,62],"normal":[105,62,75],"light":[122,73,88],"unobtainable":[64,38,46]}},{"id":46,"block":"minecraft:blue_terracotta","display":"Blue Terracotta","tones":{"dark":[53,43,64],"normal":[65,53,79],"light":[76,62,92],"unobtainable":[40,32,48]}},{"id":47,"block":"minecraft:brown_terracotta","display":"Brown Terracotta","tones":{"dark":[53,35,24],"normal":[65,43,30],"light":[76,50,35],"unobtainable":[40,26,18]}},{"id":48,"block":"minecraft:green_terracotta","display":"Green Terracotta","tones":{"dark":[53,57,29],"normal":[65,70,36],"light":[76,82,42],"unobtainable":[40,43,22]}},{"id":49,"block":"minecraft:red_terracotta","display":"Red Terracotta","tones":{"dark":[100,42,32],"normal":[122,51,39],"light":[142,60,46],"unobtainable":[75,31,24]}},{"id":50,"block":"minecraft:black_terracotta","display":"Black Terracotta","tones":{"dark":[26,15,11],"normal":[31,18,13],"light":[37,22,16],"unobtainable":[19,11,8]}},{"id":51,"block":"minecraft:crimson_nylium","display":"Crimson Nylium","tones":{"dark":[133,33,34],"normal":[163,41,42],"light":[189,48,49],"unobtainable":[100,25,25]}},{"id":52,"block":"minecraft:crimson_planks","display":"Crimson Planks","tones":{"dark":[104,44,68],"normal":[127,54,83],"light":[148,63,97],"unobtainable":[78,33,51]}},{"id":53,"block":"minecraft:crimson_hyphae","display":"Crimson Hyphae","tones":{"dark":[64,17,20],"normal":[79,21,25],"light":[92,25,29],"unobtainable":[48,13,15]}},{"id":54,"block":"minecraft:warped_nylium","display":"Warped Nylium","tones":{"dark":[15,88,94],"normal":[18,108,115],"light":[22,126,134],"unobtainable":[11,66,70]}},{"id":55,"block":"minecraft:warped_planks","display":"Warped Planks","tones":{"dark":[40,100,98],"normal":[50,122,120],"light":[58,142,140],"unobtainable":[30,75,74]}},{"id":56,"block":"minecraft:warped_hyphae","display":"Warped Hyphae","tones":{"dark":[60,31,43],"normal":[74,37,53],"light":[86,44,62],"unobtainable":[45,23,32]}},{"id":57,"block":"minecraft:warped_wart_block","display":"Warped Wart Block","tones":{"dark":[14,127,93],"normal":[17,155,114],"light":[20,180,133],"unobtainable":[10,95,70]}},{"id":58,"block":"minecraft:deepslate","display":"Deepslate","tones":{"dark":[70,70,70],"normal":[86,86,86],"light":[100,100,100],"unobtainable":[52,52,52]}},{"id":59,"block":"minecraft:raw_iron_block","display":"Block Of Raw Iron","tones":{"dark":[152,123,103],"normal":[186,150,126],"light":[216,175,147],"unobtainable":[114,92,77]}},{"id":60,"block":"minecraft:verdant_froglight","display":"Verdant Froglight","tones":{"dark":[89,117,105],"normal":[109,144,129],"light":[127,167,150],"unobtainable":[67,88,79]}}];
+const NOOBLINE = "minecraft:cobblestone";
+
+/* ================= i18n ================= */
+const STRINGS = {
+  ru: {
+    docTitle: "Map Forge — генератор map-арта для Minecraft",
+    subtitle: "генератор map-арта · Minecraft Java 1.20+",
+    paletteTitle: "Палитра карт",
+    secSource: "Источник", btnOpen: "Открыть файл…", btnDemo: "Пример: крипер",
+    srcHint1: "Или перетащи картинку в любое место окна / вставь из буфера (", srcHint2: ").",
+    secSize: "Размер арта", mapsLabel: "Карт (N×N), 128 блоков каждая",
+    fitLabel: "Вписать в холст", fitCover: "обрезать края (cover)", fitContain: "вписать целиком (contain)",
+    bgLabel: "Фон для полей",
+    secTune: "Коррекция", bright: "Яркость", contrast: "Контраст", sat: "Насыщенность",
+    dither: "Дизеринг (Флойд–Стайнберг)",
+    secMode: "Режим постройки",
+    modeFlat: "Плоский — все блоки в один уровень",
+    modeFlatHint: "Ровный пол, минимум блоков. Цвета — только базовые тона.",
+    modeStairs: "Ступенчатый — +1 блок выше/ниже",
+    modeStairsHint: "Рельеф «лесенкой» на север–юг даёт 3 тона каждого цвета: картинка точнее, блоков больше.",
+    dzTitle: "Перетащи картинку сюда", dzSub1: "или нажми, чтобы выбрать файл · ", dzSub2: " вставит из буфера",
+    figOrig: "Оригинал · после коррекции", figResult: "Результат · ", figResUnit: " блоков",
+    zoomLbl: "Зум", grid: "Сетка карт",
+    matTitle: "Материалы", matEmpty: "Пока пусто — загрузи картинку",
+    blocks: "Блоков", mapsWord: "карт", colours: "цветов",
+    warnStairs: "⚠ Ступенчатый режим на таком размере — десятки тысяч блоков и долгая генерация. Для начала попробуй 1×1.",
+    expTitle: "Экспорт",
+    coordsLabel: "Северо-западный угол (верх картинки смотрит на север)",
+    coordsHint: "Y — уровень пола. В суперплоском мире пол на ",
+    btnZip: "Скачать датапак (.zip)", btnFn: "Скачать .mcfunction", btnCopy: "Копировать команды", btnPng: "Скачать PNG превью",
+    helpSummary: "Как построить в игре",
+    help1: "Скачай датапак и положи zip в saves/ТвойМир/datapacks/.",
+    help2: "В игре: /reload, затем /function mapart:art. Арт построится от указанного угла, ряды идут на юг.",
+    help3: "Возьми пустую карту и активируй её, стоя в области арта — карта привязывается к сетке 128×128. Для арта N×N нужно N карт и столько же рамок на стене.",
+    help4: "В ступенчатом режиме не ломай служебный ряд блоков севернее арта («нублайн»), пока не снял карту — он задаёт тон верхнего ряда.",
+    help5: "Датапак собран для 1.21+. Для 1.20.x в pack.mcmeta поставь \"pack_format\": 15 (обе папки function/functions уже внутри).",
+    statusPalette: "палитра", coloursShort: "цветов", statusData: "данные палитры: MapArtCraft",
+    statusRight: "пол + карта в рамке · нублайн включён",
+    expModeFlat: "плоский", expModeStairs: "ступенчатый",
+    expFaces: "верх картинки смотрит на север (−Z)",
+    expCorner: "северо-западный угол", expRun: "запуск",
+    expNoobFlat: "нублайн — служебный ряд севернее арта, задаёт тон верхней строки (после снятия карты можно сломать)",
+    expNoobStairs: "нублайн (не ломать до снятия карты!)",
+    ttBlock: "блок", ttTone: "тон", ttHeight: "высота колонки", ttPixel: "пиксель",
+    toastZip: "Датапак скачан ✓", toastFn: "Функция скачана ✓", toastCopy: "Скопировано ✓",
+    toastPng: "PNG скачан ✓", toastNoImg: "Сначала загрузи картинку!",
+    tones: { dark: "тёмный", normal: "обычный", light: "светлый" },
+  },
+  en: {
+    docTitle: "Map Forge — map art generator for Minecraft",
+    subtitle: "map art generator · Minecraft Java 1.20+",
+    paletteTitle: "Map palette",
+    secSource: "Source", btnOpen: "Open file…", btnDemo: "Demo: creeper",
+    srcHint1: "Or drag an image anywhere in this window / paste it (", srcHint2: ").",
+    secSize: "Art size", mapsLabel: "Maps (N×N), 128 blocks each",
+    fitLabel: "Fit to canvas", fitCover: "crop edges (cover)", fitContain: "fit whole image (contain)",
+    bgLabel: "Letterbox colour",
+    secTune: "Adjust", bright: "Brightness", contrast: "Contrast", sat: "Saturation",
+    dither: "Dithering (Floyd–Steinberg)",
+    secMode: "Build mode",
+    modeFlat: "Flat — all blocks at one level",
+    modeFlatHint: "Level floor, fewest blocks. Base tones only.",
+    modeStairs: "Staircased — ±1 block heights",
+    modeStairsHint: "North–south terracing gives 3 tones per colour: a more accurate picture, but way more blocks.",
+    dzTitle: "Drop an image here", dzSub1: "or click to pick a file · ", dzSub2: " pastes from the clipboard",
+    figOrig: "Original · after adjustments", figResult: "Result · ", figResUnit: " blocks",
+    zoomLbl: "Zoom", grid: "Map grid",
+    matTitle: "Materials", matEmpty: "Nothing yet — load an image",
+    blocks: "Blocks", mapsWord: "maps", colours: "colours used",
+    warnStairs: "⚠ Staircased mode at this size means tens of thousands of blocks and slow generation. Try 1×1 first.",
+    expTitle: "Export",
+    coordsLabel: "North-west corner (image top faces north)",
+    coordsHint: "Y is the floor level. In a superflat world the floor is at ",
+    btnZip: "Download datapack (.zip)", btnFn: "Download .mcfunction", btnCopy: "Copy commands", btnPng: "Download PNG preview",
+    helpSummary: "How to build in-game",
+    help1: "Download the datapack and drop the zip into saves/YourWorld/datapacks/.",
+    help2: "In game: /reload, then /function mapart:art. The art builds from the corner you set, rows run south.",
+    help3: "Take an empty map and activate it while standing inside the art area — maps snap to a 128×128 grid. An N×N artwork needs N maps and that many item frames on a wall.",
+    help4: "In staircased mode, don't break the scaffold row north of the art (the \"noobline\") until you've captured the map — it sets the top row's tone.",
+    help5: "The datapack targets 1.21+. For 1.20.x set \"pack_format\": 15 in pack.mcmeta (both function/functions folders are inside).",
+    statusPalette: "palette", coloursShort: "colours", statusData: "palette data: MapArtCraft",
+    statusRight: "floor + map in item frame · noobline included",
+    expModeFlat: "flat", expModeStairs: "staircased",
+    expFaces: "image top faces north (−Z)",
+    expCorner: "north-west corner", expRun: "run",
+    expNoobFlat: "noobline — scaffold row north of the art, sets the top row's tone (break it after taking the map)",
+    expNoobStairs: "noobline (don't break until you've taken the map!)",
+    ttBlock: "block", ttTone: "tone", ttHeight: "column height", ttPixel: "pixel",
+    toastZip: "Datapack downloaded ✓", toastFn: "Function downloaded ✓", toastCopy: "Copied ✓",
+    toastPng: "PNG downloaded ✓", toastNoImg: "Load an image first!",
+    tones: { dark: "dark", normal: "normal", light: "light" },
+  },
+};
+let LANG = localStorage.getItem("mf-lang") || "ru";
+const t = k => (STRINGS[LANG] && STRINGS[LANG][k]) ?? STRINGS.ru[k] ?? k;
+const TONE_I18N = () => STRINGS[LANG].tones;
+function fmtNum(n) { return n.toLocaleString(LANG === "ru" ? "ru-RU" : "en-US"); }
+
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.title = t("docTitle");
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  $("paletteStrip").title = t("paletteTitle");
+  document.querySelectorAll(".lang-btn").forEach(b => b.classList.toggle("on", b.dataset.lang === LANG));
+  $("statusLeft").textContent = `${t("statusPalette")}: Java 1.20 · ${PALETTE.length} ${t("coloursShort")} · ${t("statusData")}`;
+  localStorage.setItem("mf-lang", LANG);
+  schedule(); // перерисовать динамические строки
+}
+
+/* ================= полный список тонов ================= */
+const ENTRIES_ALL = [];
+const ENTRIES_FLAT = [];
+for (const c of PALETTE) {
+  for (const tone of ["dark", "normal", "light"]) {
+    const e = { ci: c.id, tone, r: c.tones[tone][0], g: c.tones[tone][1], b: c.tones[tone][2], block: c.block, display: c.display };
+    ENTRIES_ALL.push(e);
+    if (tone === "normal") ENTRIES_FLAT.push(e);
+  }
+}
+
+/* ================= состояние ================= */
+const state = {
+  img: null, maps: 1, fit: "cover", bg: "#000000",
+  bright: 100, contrast: 100, sat: 100, dither: false, mode: "flat",
+  zoom: 3, grid: false,
+  W: 128, H: 128,
+  chosen: null,      // Uint32Array: индекс в ENTRIES_* на пиксель
+  entries: ENTRIES_FLAT,
+  heights: null,     // ступенчатый режим: нормированная высота колонки на пиксель
+  noobline: null,    // высота нублайна на колонку
+  usedColours: 0,
+  cmdCount: 0, blockCount: 0,
+};
+
+/* ================= dom ================= */
+const $ = id => document.getElementById(id);
+const cvOrig = $("cvOrig"), cvRes = $("cvRes");
+const fileInput = $("fileInput");
+
+/* палитра-полоска в шапке */
+{
+  const strip = $("paletteStrip");
+  for (const c of PALETTE) {
+    const i = document.createElement("i");
+    const tn = c.tones.normal;
+    i.style.background = `rgb(${tn[0]},${tn[1]},${tn[2]})`;
+    i.title = c.display;
+    strip.appendChild(i);
+  }
+}
+
+document.querySelectorAll(".lang-btn").forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.lang !== LANG) { LANG = b.dataset.lang; applyLang(); }
+}));
+
+/* ================= ввод картинки ================= */
+function loadImageFile(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => { state.img = img; enterWorkMode(); schedule(); URL.revokeObjectURL(url); };
+  img.src = url;
+}
+fileInput.addEventListener("change", () => loadImageFile(fileInput.files[0]));
+$("btnOpen").addEventListener("click", () => fileInput.click());
+$("dropzone").addEventListener("click", e => { if (e.target.tagName !== "BUTTON") fileInput.click(); });
+
+window.addEventListener("paste", e => {
+  for (const item of e.clipboardData.items) {
+    if (item.type.startsWith("image/")) { loadImageFile(item.getAsFile()); break; }
+  }
+});
+["dragover", "dragenter"].forEach(ev => window.addEventListener(ev, e => {
+  e.preventDefault(); $("dropzone").classList.add("over");
+}));
+window.addEventListener("dragleave", e => { if (!e.relatedTarget) $("dropzone").classList.remove("over"); });
+window.addEventListener("drop", e => {
+  e.preventDefault(); $("dropzone").classList.remove("over");
+  loadImageFile(e.dataTransfer.files[0]);
+});
+
+/* демо: крипер */
+function makeCreeperDemo() {
+  const c = document.createElement("canvas"); c.width = c.height = 128;
+  const x = c.getContext("2d");
+  const greens = ["#4f9a34", "#58a83c", "#63b93e", "#478f2d", "#5cb03a"];
+  for (let j = 0; j < 128; j += 4) for (let i = 0; i < 128; i += 4) {
+    x.fillStyle = greens[(Math.random() * greens.length) | 0];
+    x.fillRect(i, j, 4, 4);
+  }
+  const face = [
+    "00000000",
+    "01100110",
+    "01100110",
+    "00011000",
+    "00111100",
+    "00111100",
+    "01011010",
+    "00000000",
+  ];
+  for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) {
+    if (face[j][i] === "1") { x.fillStyle = "#10150c"; x.fillRect(i * 16, j * 16, 16, 16); }
+  }
+  const img = new Image();
+  img.onload = () => { state.img = img; enterWorkMode(); schedule(); };
+  img.src = c.toDataURL();
+}
+$("btnDemo").addEventListener("click", makeCreeperDemo);
+$("btnDemo2").addEventListener("click", makeCreeperDemo);
+
+function enterWorkMode() {
+  $("dropzone").hidden = true;
+  $("work").hidden = false;
+}
+
+/* ================= контролы ================= */
+let regenTimer = 0;
+function schedule() { clearTimeout(regenTimer); regenTimer = setTimeout(process, 120); }
+
+$("maps").addEventListener("change", e => {
+  state.maps = +e.target.value;
+  state.zoom = state.maps === 1 ? 3 : state.maps === 2 ? 2 : 1.5;
+  $("zoom").value = state.zoom; applyZoom(); schedule();
+});
+$("fit").addEventListener("change", e => { state.fit = e.target.value; $("bgRow").style.opacity = state.fit === "contain" ? 1 : .4; schedule(); });
+$("bg").addEventListener("input", e => { state.bg = e.target.value; schedule(); });
+$("bright").addEventListener("input", e => { state.bright = +e.target.value; $("oBright").value = e.target.value; schedule(); });
+$("contrast").addEventListener("input", e => { state.contrast = +e.target.value; $("oContrast").value = e.target.value; schedule(); });
+$("sat").addEventListener("input", e => { state.sat = +e.target.value; $("oSat").value = e.target.value; schedule(); });
+$("dither").addEventListener("change", e => { state.dither = e.target.checked; schedule(); });
+document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener("change", e => { state.mode = e.target.value; schedule(); }));
+$("zoom").addEventListener("input", e => { state.zoom = +e.target.value; applyZoom(); });
+$("grid").addEventListener("change", e => { state.grid = e.target.checked; drawResult(); });
+$("bgRow").style.opacity = .4; // стартовый fit = cover, фон не нужен
+
+function applyZoom() {
+  const px = state.W * state.zoom;
+  cvOrig.style.width = cvRes.style.width = px + "px";
+  cvOrig.style.height = cvRes.style.height = px + "px";
+}
+
+/* ================= движок ================= */
+function process() {
+  if (!state.img) return;
+  const W = state.W = state.H = 128 * state.maps;
+  state.entries = state.mode === "flat" ? ENTRIES_FLAT : ENTRIES_ALL;
+
+  /* оригинал: fit + фильтры */
+  cvOrig.width = cvRes.width = W; cvOrig.height = cvRes.height = state.H;
+  const xo = cvOrig.getContext("2d", { willReadFrequently: true });
+  xo.imageSmoothingEnabled = true;
+  xo.filter = `brightness(${state.bright}%) contrast(${state.contrast}%) saturate(${state.sat}%)`;
+  xo.fillStyle = state.bg; xo.fillRect(0, 0, W, state.H);
+  drawFitted(xo, state.img, W, state.H, state.fit);
+  xo.filter = "none";
+
+  const data = xo.getImageData(0, 0, W, state.H).data;
+
+  /* квантование */
+  const entries = state.entries;
+  const n = entries.length;
+  const er = new Float32Array(n), eg = new Float32Array(n), eb = new Float32Array(n);
+  entries.forEach((e, i) => { er[i] = e.r; eg[i] = e.g; eb[i] = e.b; });
+
+  const chosen = state.chosen = new Uint32Array(W * state.H);
+  if (!state.dither) {
+    for (let p = 0, i = 0; p < chosen.length; p++, i += 4) {
+      chosen[p] = nearest(data[i], data[i + 1], data[i + 2]);
+    }
+  } else {
+    const buf = new Float32Array(W * state.H * 3);
+    for (let p = 0, i = 0; p < W * state.H; p++, i += 4) { buf[p * 3] = data[i]; buf[p * 3 + 1] = data[i + 1]; buf[p * 3 + 2] = data[i + 2]; }
+    for (let y = 0; y < state.H; y++) for (let x = 0; x < W; x++) {
+      const p = y * W + x, o = p * 3;
+      const r = Math.min(255, Math.max(0, buf[o])), g = Math.min(255, Math.max(0, buf[o + 1])), b = Math.min(255, Math.max(0, buf[o + 2]));
+      const ei = nearest(r, g, b), e = entries[ei];
+      chosen[p] = ei;
+      const dr = r - e.r, dg = g - e.g, db = b - e.b;
+      const push = (xx, yy, f) => {
+        if (xx < 0 || xx >= W || yy >= state.H) return;
+        const q = (yy * W + xx) * 3;
+        buf[q] += dr * f; buf[q + 1] += dg * f; buf[q + 2] += db * f;
+      };
+      push(x + 1, y, 7 / 16); push(x - 1, y + 1, 3 / 16); push(x, y + 1, 5 / 16); push(x + 1, y + 1, 1 / 16);
+    }
+  }
+
+  function nearest(r, g, b) {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < n; i++) {
+      const dr = r - er[i], dg = g - eg[i], db = b - eb[i];
+      const d = dr * dr + dg * dg + db * db;
+      if (d < bd) { bd = d; bi = i; }
+    }
+    return bi;
+  }
+
+  /* подсчёт высот для ступенчатого режима */
+  let heights = null, noobline = null;
+  if (state.mode === "stairs") {
+    heights = new Int16Array(W * state.H);
+    noobline = new Int16Array(W);
+    for (let x = 0; x < W; x++) {
+      let h = 0, min = 0;
+      for (let y = 0; y < state.H; y++) {
+        const tone = entries[chosen[y * W + x]].tone;
+        h += tone === "light" ? 1 : tone === "dark" ? -1 : 0;
+        heights[y * W + x] = h;
+        if (h < min) min = h;
+      }
+      for (let y = 0; y < state.H; y++) heights[y * W + x] -= min; // нормируем колонку к земле
+      noobline[x] = -min;
+    }
+  }
+  state.heights = heights; state.noobline = noobline;
+
+  drawResult();
+  renderMaterials(heights);
+  $("resLabel").textContent = `${W}×${state.H}`;
+  applyZoom();
+  state.cmdCount = countCommands();
+}
+
+function drawFitted(ctx, img, W, H, fit) {
+  const s = fit === "cover" ? Math.max(W / img.width, H / img.height) : Math.min(W / img.width, H / img.height);
+  const dw = img.width * s, dh = img.height * s;
+  ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+}
+
+function drawResult() {
+  const W = state.W, H = state.H, entries = state.entries;
+  const ctx = cvRes.getContext("2d");
+  const imgData = ctx.createImageData(W, H);
+  const d = imgData.data;
+  for (let p = 0, i = 0; p < state.chosen.length; p++, i += 4) {
+    const e = entries[state.chosen[p]];
+    d[i] = e.r; d[i + 1] = e.g; d[i + 2] = e.b; d[i + 3] = 255;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  if (state.grid && state.maps > 1) {
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    for (let k = 128; k < W; k += 128) { ctx.fillRect(k - 1, 0, 2, H); ctx.fillRect(0, k - 1, W, 2); }
+  }
+}
+
+function renderMaterials(heights) {
+  const W = state.W, H = state.H, entries = state.entries;
+  const byBlock = new Map();
+  let total = 0;
+  const perPalette = new Map(); // цвет -> пикселей (для статистики)
+  for (let p = 0; p < state.chosen.length; p++) {
+    const e = entries[state.chosen[p]];
+    const add = heights ? heights[p] + 1 : 1;
+    let rec = byBlock.get(e.block);
+    if (!rec) { rec = { display: e.display, hex: rgb(e.r, e.g, e.b), count: 0 }; byBlock.set(e.block, rec); }
+    rec.count += add; total += add;
+    perPalette.set(e.ci, (perPalette.get(e.ci) || 0) + 1);
+  }
+  state.blockCount = total;
+  const rows = [...byBlock.values()].sort((a, b) => b.count - a.count);
+  const list = $("matlist");
+  list.innerHTML = "";
+  for (const r of rows) {
+    const div = document.createElement("div");
+    div.className = "mrow";
+    const pct = (r.count / total * 100).toFixed(1);
+    div.innerHTML = `<span class="fillbar" style="width:${pct}%"></span><span class="sw" style="background:${r.hex}"></span><span class="nm" title="${r.block}">${r.display}</span><span class="ct">${fmtNum(r.count)} · ${pct}%</span>`;
+    list.appendChild(div);
+  }
+  const warn = state.mode === "stairs" && total > 70000 ? `<br><span class="warn">${t("warnStairs")}</span>` : "";
+  $("mtotal").innerHTML = `${t("blocks")}: <b>${fmtNum(total)}</b> · ${t("mapsWord")}: <b>${state.maps}×${state.maps}</b> · ${t("colours")}: <b>${perPalette.size}/${PALETTE.length}</b>${warn}`;
+}
+function rgb(r, g, b) { return `rgb(${r},${g},${b})`; }
+
+/* ================= экспорт ================= */
+function baseCoords() {
+  return [$("cx").value | 0, $("cy").value | 0, $("cz").value | 0];
+}
+
+function buildCommands() {
+  if (!state.chosen) return null;
+  const [bx, by, bz] = baseCoords();
+  const W = state.W, H = state.H, entries = state.entries;
+  const L = [];
+  L.push(`# Map Forge — map art ${W}x${H} (${state.maps}x${state.maps} maps)`);
+  L.push(`# ${state.mode === "flat" ? t("expModeFlat") : t("expModeStairs")}: ${t("expFaces")}`);
+  L.push(`# ${t("expCorner")}: X=${bx} Y=${by} Z=${bz}`);
+  L.push(`# ${t("expRun")}: /function mapart:art`);
+  L.push("");
+
+  if (state.mode === "flat") {
+    L.push(`# ${t("expNoobFlat")}`);
+    L.push(`fill ${bx} ${by} ${bz - 1} ${bx + W - 1} ${by} ${bz - 1} ${NOOBLINE}`);
+    for (let y = 0; y < H; y++) {
+      let x = 0;
+      while (x < W) {
+        const e = entries[state.chosen[y * W + x]];
+        let x2 = x + 1;
+        while (x2 < W && entries[state.chosen[y * W + x2]].block === e.block) x2++;
+        L.push(`fill ${bx + x} ${by} ${bz + y} ${bx + x2 - 1} ${by} ${bz + y} ${e.block}`);
+        x = x2;
+      }
+    }
+  } else {
+    L.push(`# ${t("expNoobStairs")}`);
+    for (let x = 0; x < W; x++) {
+      L.push(`setblock ${bx + x} ${by + state.noobline[x]} ${bz - 1} ${NOOBLINE}`);
+      for (let y = 0; y < H; y++) {
+        const e = entries[state.chosen[y * W + x]];
+        const hh = state.heights[y * W + x];
+        L.push(`fill ${bx + x} ${by} ${bz + y} ${bx + x} ${by + hh} ${bz + y} ${e.block}`);
+      }
+    }
+  }
+  return L.join("\n");
+}
+
+function countCommands() {
+  // приблизительно: для плоского — RLE-прогоны, для ступенчатого — пиксели + нублайн
+  if (!state.chosen) return 0;
+  const W = state.W, H = state.H, entries = state.entries;
+  if (state.mode === "flat") {
+    let c = 1;
+    for (let y = 0; y < H; y++) {
+      let x = 0;
+      while (x < W) {
+        const b = entries[state.chosen[y * W + x]].block;
+        let x2 = x + 1;
+        while (x2 < W && entries[state.chosen[y * W + x2]].block === b) x2++;
+        c++; x = x2;
+      }
+    }
+    return c;
+  }
+  return W * H + W + 5;
+}
+
+function download(name, blob) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+function requireResult() {
+  if (state.chosen) return true;
+  toast(t("toastNoImg")); return false;
+}
+
+$("btnFn").addEventListener("click", () => {
+  if (!requireResult()) return;
+  const text = buildCommands();
+  download(`mapart_${state.W}x${state.H}.mcfunction`, new Blob([text], { type: "text/plain" }));
+  toast(t("toastFn"));
+});
+
+$("btnCopy").addEventListener("click", async () => {
+  if (!requireResult()) return;
+  const text = buildCommands();
+  try { await navigator.clipboard.writeText(text); toast(t("toastCopy")); }
+  catch {
+    const ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); ta.remove(); toast(t("toastCopy"));
+  }
+});
+
+$("btnPng").addEventListener("click", () => {
+  if (!requireResult()) return;
+  cvRes.toBlob(b => { download(`mapart_${state.W}x${state.H}.png`, b); toast(t("toastPng")); });
+});
+
+/* ---- zip (STORE, без библиотек) ---- */
+const CRC_TABLE = (() => {
+  const tt = new Uint32Array(256);
+  for (let nn = 0; nn < 256; nn++) {
+    let c = nn;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    tt[nn] = c >>> 0;
+  }
+  return tt;
+})();
+function crc32(buf) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function makeZip(files) {
+  const enc = new TextEncoder();
+  const chunks = [], central = [];
+  let offset = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), data = enc.encode(f.data);
+    const crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(8, 0, true); lh.setUint16(10, 0, true); lh.setUint16(12, 0, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    chunks.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+    ch.setUint16(10, 0, true); ch.setUint16(12, 0, true); ch.setUint16(14, 0, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+    ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    offset += 30 + name.length + data.length;
+  }
+  let cdSize = 0; central.forEach(u => cdSize += u.length);
+  const eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true); eocd.setUint16(8, files.length, true); eocd.setUint16(10, files.length, true);
+  eocd.setUint32(12, cdSize, true); eocd.setUint32(16, offset, true);
+  return new Blob([...chunks, ...central, new Uint8Array(eocd.buffer)], { type: "application/zip" });
+}
+$("btnZip").addEventListener("click", () => {
+  if (!requireResult()) return;
+  const fn = buildCommands();
+  const meta = JSON.stringify({ pack: { pack_format: 48, description: "Map Art — made with Map Forge" } });
+  const zip = makeZip([
+    { name: "pack.mcmeta", data: meta },
+    { name: "data/mapart/function/art.mcfunction", data: fn },
+    { name: "data/mapart/functions/art.mcfunction", data: fn },
+  ]);
+  download("mapart_datapack.zip", zip);
+  toast(t("toastZip"));
+});
+
+/* ================= tooltip ================= */
+const tooltip = $("tooltip");
+cvRes.addEventListener("mousemove", e => {
+  if (!state.chosen) return;
+  const rect = cvRes.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / rect.width * state.W);
+  const y = Math.floor((e.clientY - rect.top) / rect.height * state.H);
+  if (x < 0 || y < 0 || x >= state.W || y >= state.H) { tooltip.style.display = "none"; return; }
+  const e2 = state.entries[state.chosen[y * state.W + x]];
+  const h = state.mode === "stairs" ? `<br>${t("ttHeight")}: +${state.heights[y * state.W + x]}` : "";
+  tooltip.innerHTML = `<span class="tt-name">${e2.display}</span><br>${t("ttBlock")}: <code>${e2.block.replace("minecraft:", "")}</code><br>${t("ttTone")}: ${TONE_I18N()[e2.tone]} · #${hex(e2.r, e2.g, e2.b)}${h}<br>${t("ttPixel")}: ${x}, ${y}`;
+  tooltip.style.display = "block";
+  tooltip.style.left = Math.min(e.clientX + 14, innerWidth - 260) + "px";
+  tooltip.style.top = (e.clientY + 14) + "px";
+});
+cvRes.addEventListener("mouseleave", () => tooltip.style.display = "none");
+function hex(r, g, b) { return [r, g, b].map(v => v.toString(16).padStart(2, "0")).join(""); }
+
+/* ================= toast ================= */
+let toastTimer = 0;
+function toast(msg) {
+  const el = $("toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+/* ================= init ================= */
+applyLang();
+</script>
+</body>
+</html>
